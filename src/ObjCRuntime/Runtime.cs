@@ -253,7 +253,7 @@ namespace ObjCRuntime {
 				Registrar = new DynamicRegistrar ();
 			RegisterDelegates (options);
 			Class.Initialize (options);
-			Mono.SystemDependencyProvider.Initialize ();
+			//Mono.SystemDependencyProvider.Initialize ();
 			InitializePlatform (options);
 
 #if !XAMMAC_SYSTEM_MONO
