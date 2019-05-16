@@ -12,10 +12,10 @@
 #include "delegates.h"
 #include "product.h"
 
-static guint32
-xamarin_get_exception_for_method (int code, guint32 inner_exception_gchandle, const char *reason, SEL sel, id self)
+static gpointer
+xamarin_get_exception_for_method (int code, gpointer inner_exception_gchandle, const char *reason, SEL sel, id self)
 {
-	guint32 exception_gchandle = 0;
+	gpointer exception_gchandle = NULL;
 	char *msg = xamarin_strdup_printf ("%s\n"
 		"Additional information:\n"
 		"\tSelector: %s\n"
@@ -25,12 +25,12 @@ xamarin_get_exception_for_method (int code, guint32 inner_exception_gchandle, co
 	return exception_gchandle;
 }
 
-guint32
-xamarin_get_exception_for_parameter (int code, guint32 inner_exception_gchandle, const char *reason, SEL sel, MonoMethod *method, MonoType *p, int i, bool to_managed)
+gpointer
+xamarin_get_exception_for_parameter (int code, gpointer inner_exception_gchandle, const char *reason, SEL sel, MonoMethod *method, MonoType *p, int i, bool to_managed)
 {
-	guint32 exception_gchandle = 0;
+	gpointer exception_gchandle = NULL;
 	char *to_name = xamarin_type_get_full_name (p, &exception_gchandle);
-	if (exception_gchandle != 0)
+	if (exception_gchandle != NULL)
 		return exception_gchandle;
 	char *method_full_name = mono_method_full_name (method, TRUE);
 	char *msg = xamarin_strdup_printf ("%s #%i whose managed type is '%s' %s.\n"
@@ -87,14 +87,14 @@ xamarin_invoke_trampoline (enum TrampolineType type, id self, SEL sel, iterator_
 
 	MonoObject *exception = NULL;
 	MonoObject **exception_ptr = xamarin_is_managed_exception_marshaling_disabled () ? NULL : &exception;
-	guint32 exception_gchandle = 0;
+	gpointer exception_gchandle = NULL;
 	bool is_static = (type & Tramp_Static) == Tramp_Static;
 	bool is_ctor = type == Tramp_Ctor;
 	const char *ret_type = NULL;
 
 	if (is_ctor) {
 		bool has_nsobject = xamarin_has_nsobject (self, &exception_gchandle);
-		if (exception_gchandle != 0) {
+		if (exception_gchandle != NULL) {
 			xamarin_process_managed_exception_gchandle (exception_gchandle);
 			return; // we shouldn't get here.
 		}
@@ -157,7 +157,7 @@ xamarin_invoke_trampoline (enum TrampolineType type, id self, SEL sel, iterator_
 	} else {
 		xamarin_get_method_and_object_for_selector ([self class], sel, is_static, self, &mthis, desc, &exception_gchandle);
 	}
-	if (exception_gchandle != 0) {
+	if (exception_gchandle != NULL) {
 		exception_gchandle = xamarin_get_exception_for_method (8034, exception_gchandle, "Failed to lookup the required marshalling information.", sel, self);
 		goto exception_handling;
 	}
@@ -624,10 +624,10 @@ exception_handling:
 	if (dispose_list) {
 		SList *list = dispose_list;
 		while (list) {
-			guint32 dispose_exception_gchandle = 0;
+			gpointer dispose_exception_gchandle = NULL;
 			xamarin_dispose ((MonoObject *) list->data, &dispose_exception_gchandle);
 			if (dispose_exception_gchandle != 0) {
-				if (exception_gchandle == 0) {
+				if (exception_gchandle == NULL) {
 					// If we get an exception while disposing, and we don't already have an exception, then we need to throw the dispose exception (later, when done disposing)
 					exception_gchandle = dispose_exception_gchandle;
 				} else {

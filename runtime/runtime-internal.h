@@ -29,7 +29,7 @@
 extern "C" {
 #endif
 
-void *xamarin_marshal_return_value (SEL sel, MonoType *mtype, const char *type, MonoObject *retval, bool retain, MonoMethod *method, MethodDescription *desc, guint32 *exception_gchandle);
+void *xamarin_marshal_return_value (SEL sel, MonoType *mtype, const char *type, MonoObject *retval, bool retain, MonoMethod *method, MethodDescription *desc, gpointer *exception_gchandle);
 
 #ifdef __cplusplus
 }
@@ -42,11 +42,11 @@ void *xamarin_marshal_return_value (SEL sel, MonoType *mtype, const char *type, 
  */
 @interface XamarinGCHandle : NSObject {
 @public
-	int handle;
+	gpointer handle;
 }
-+(XamarinGCHandle *) createWithHandle: (int) handle;
++(XamarinGCHandle *) createWithHandle: (gpointer) handle;
 -(void) dealloc;
--(int) getHandle;
+-(gpointer) getHandle;
 @end
 
 #endif /* __RUNTIME_INTERNAL_H__ */

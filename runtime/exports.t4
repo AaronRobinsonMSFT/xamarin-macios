@@ -110,20 +110,20 @@
 			"MonoObject **", "exc"
 		),
 
-		new Export ("uint32_t", "mono_gchandle_new",
+		new Export ("gpointer", "mono_gchandle_new",
 			"MonoObject *", "obj",
 			"mono_bool", "pinned"
 		),
 
 		new Export ("MonoObject *", "mono_gchandle_get_target",
-			"uint32_t", "gchandle"
+			"gpointer", "gchandle"
 		),
 
 		new Export ("void", "mono_gchandle_free",
-			"uint32_t", "gchandle"
+			"gpointer", "gchandle"
 		),
 
-		new Export ("uint32_t", "mono_gchandle_new_weakref",
+		new Export ("gpointer", "mono_gchandle_new_weakref",
 			"MonoObject *", "obj",
 			"mono_bool", "track_resurrection"
 		),

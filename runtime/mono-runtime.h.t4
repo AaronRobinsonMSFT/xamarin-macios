@@ -271,7 +271,7 @@ typedef enum {
 
 /* metadata/marshal.h */
 
-typedef void (*MonoFtnPtrEHCallback) (guint32 gchandle);
+typedef void (*MonoFtnPtrEHCallback) (gpointer gchandle);
 
 /* not in any header */
 

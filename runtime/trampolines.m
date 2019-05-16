@@ -72,7 +72,7 @@ xamarin_get_primitive_size (char type)
 }
 
 static void *
-xamarin_marshal_return_value_impl (MonoType *mtype, const char *type, MonoObject *retval, bool retain, MonoMethod *method, MethodDescription *desc, guint32 *exception_gchandle)
+xamarin_marshal_return_value_impl (MonoType *mtype, const char *type, MonoObject *retval, bool retain, MonoMethod *method, MethodDescription *desc, gpointer *exception_gchandle)
 {
 	// COOP: accesses managed memory: unsafe mode.
 	MONO_ASSERT_GC_UNSAFE;
@@ -133,22 +133,22 @@ xamarin_marshal_return_value_impl (MonoType *mtype, const char *type, MonoObject
 	}
 }
 
-static guint32
-xamarin_get_exception_for_element_conversion_failure (guint32 inner_exception_gchandle, int index)
+static gpointer
+xamarin_get_exception_for_element_conversion_failure (gpointer inner_exception_gchandle, int index)
 {
-	guint32 exception_gchandle = 0;
+	gpointer exception_gchandle = NULL;
 	char *msg = xamarin_strdup_printf ("Failed to marshal the value at index %i.", index);
 	exception_gchandle = xamarin_create_product_exception_with_inner_exception (8036, inner_exception_gchandle, msg);
 	xamarin_free (msg);
 	return exception_gchandle;
 }
 
-static guint32
-xamarin_get_exception_for_return_value (int code, guint32 inner_exception_gchandle, SEL sel, MonoMethod *method, MonoType *returnType)
+static gpointer
+xamarin_get_exception_for_return_value (int code, gpointer inner_exception_gchandle, SEL sel, MonoMethod *method, MonoType *returnType)
 {
-	guint32 exception_gchandle = 0;
+	gpointer exception_gchandle = NULL;
 	char *to_name = xamarin_type_get_full_name (returnType, &exception_gchandle);
-	if (exception_gchandle != 0)
+	if (exception_gchandle != NULL)
 		return exception_gchandle;
 	char *method_full_name = mono_method_full_name (method, TRUE);
 	char *msg = xamarin_strdup_printf ("Unable to marshal the return value of type '%s' to Objective-C.\n"
@@ -163,7 +163,7 @@ xamarin_get_exception_for_return_value (int code, guint32 inner_exception_gchand
 }
 
 void *
-xamarin_marshal_return_value (SEL sel, MonoType *mtype, const char *type, MonoObject *retval, bool retain, MonoMethod *method, MethodDescription *desc, guint32 *exception_gchandle)
+xamarin_marshal_return_value (SEL sel, MonoType *mtype, const char *type, MonoObject *retval, bool retain, MonoMethod *method, MethodDescription *desc, gpointer *exception_gchandle)
 {
 	void *rv;
 	rv = xamarin_marshal_return_value_impl (mtype, type, retval, retain, method, desc, exception_gchandle);
@@ -314,7 +314,7 @@ get_type_description_length (const char *desc)
 }
 
 // The input string will be freed (so that the caller can use xamarin_strdup_printf easily).
-guint32
+gpointer
 xamarin_create_mt_exception (char *msg)
 {
 	MonoException *ex = xamarin_create_exception (msg);
@@ -430,7 +430,7 @@ xamarin_copyWithZone_trampoline1 (id self, SEL sel, NSZone *zone)
 	// This is for subclasses that themselves do not implement Copy (NSZone)
 
 	id rv;
-	int gchandle;
+	gpointer gchandle;
 	struct objc_super sup;
 
 #if defined (DEBUG_REF_COUNTING)
@@ -439,8 +439,8 @@ xamarin_copyWithZone_trampoline1 (id self, SEL sel, NSZone *zone)
 
 	// Clear out our own GCHandle
 	gchandle = xamarin_get_gchandle_with_flags (self);
-	if (gchandle != 0)
-		xamarin_set_gchandle (self, 0);
+	if (gchandle != NULL)
+		xamarin_set_gchandle (self, NULL);
 
 	// Call the base class implementation
 	id (*invoke) (struct objc_super *, SEL, NSZone*) = (id (*)(struct objc_super *, SEL, NSZone*)) objc_msgSendSuper;
@@ -448,7 +448,7 @@ xamarin_copyWithZone_trampoline1 (id self, SEL sel, NSZone *zone)
 	rv = invoke (&sup, sel, zone);
 
 	// Restore our GCHandle
-	if (gchandle != 0)
+	if (gchandle != NULL)
 		xamarin_set_gchandle (self, gchandle);
 
 	return rv;
@@ -461,7 +461,7 @@ xamarin_copyWithZone_trampoline2 (id self, SEL sel, NSZone *zone)
 	// This is for subclasses that already implement Copy (NSZone)
 
 	id rv;
-	int gchandle;
+	gpointer gchandle;
 
 #if defined (DEBUG_REF_COUNTING)
 	PRINT ("xamarin_copyWithZone_trampoline2 (%p, %s, %p)\n", self, sel_getName (sel), zone);
@@ -469,15 +469,15 @@ xamarin_copyWithZone_trampoline2 (id self, SEL sel, NSZone *zone)
 
 	// Clear out our own GCHandle
 	gchandle = xamarin_get_gchandle_with_flags (self);
-	if (gchandle != 0)
-		xamarin_set_gchandle (self, 0);
+	if (gchandle != NULL)
+		xamarin_set_gchandle (self, NULL);
 
 	// Call the managed implementation
 	id (*invoke) (id, SEL, NSZone*) = (id (*)(id, SEL, NSZone*)) xamarin_trampoline;
 	rv = invoke (self, sel, zone);
 
 	// Restore our GCHandle
-	if (gchandle != 0)
+	if (gchandle != NULL)
 		xamarin_set_gchandle (self, gchandle);
 
 	return rv;
@@ -522,9 +522,9 @@ xamarin_release_trampoline (id self, SEL sel)
 }
 
 void
-xamarin_notify_dealloc (id self, int gchandle)
+xamarin_notify_dealloc (id self, gpointer gchandle)
 {
-	guint32 exception_gchandle = 0;
+	gpointer exception_gchandle = NULL;
 
 	// COOP: safe mode upon entry, switches to unsafe when acccessing managed memory.
 	MONO_ASSERT_GC_SAFE_OR_DETACHED;
@@ -558,7 +558,7 @@ xamarin_retain_trampoline (id self, SEL sel)
 #if defined(DEBUG_REF_COUNTING)
 	int ref_count = [self retainCount];
 	bool had_managed_ref = xamarin_has_managed_ref (self);
-	int pre_gchandle = xamarin_get_gchandle (self);
+	gpointer pre_gchandle = xamarin_get_gchandle (self);
 #endif
 
 	/*
@@ -594,7 +594,7 @@ static pthread_mutex_t gchandle_hash_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static const char *associated_key = "x"; // the string value doesn't matter, only the pointer value.
 void
-xamarin_set_gchandle_trampoline (id self, SEL sel, int gc_handle)
+xamarin_set_gchandle_trampoline (id self, SEL sel, gpointer gc_handle)
 {
 	// COOP: Called by ObjC (when the setGCHandle: selector is called on an object).
 	// COOP: Safe mode upon entry, and doesn't access managed memory, so no need to change.
@@ -617,7 +617,7 @@ xamarin_set_gchandle_trampoline (id self, SEL sel, int gc_handle)
 	pthread_mutex_lock (&gchandle_hash_lock);
 	if (gchandle_hash == NULL)
 		gchandle_hash = CFDictionaryCreateMutable (kCFAllocatorDefault, 0, NULL, NULL);
-	if (gc_handle == 0) {
+	if (gc_handle == NULL) {
 		CFDictionaryRemoveValue (gchandle_hash, self);
 	} else {
 		CFDictionarySetValue (gchandle_hash, self, GINT_TO_POINTER (gc_handle));
@@ -625,7 +625,7 @@ xamarin_set_gchandle_trampoline (id self, SEL sel, int gc_handle)
 	pthread_mutex_unlock (&gchandle_hash_lock);
 }
 
-int
+gpointer
 xamarin_get_gchandle_trampoline (id self, SEL sel)
 {
 	// COOP: Called by ObjC (when the getGCHandle selector is called on an object).
@@ -633,16 +633,16 @@ xamarin_get_gchandle_trampoline (id self, SEL sel)
 	MONO_ASSERT_GC_SAFE;
 	
 	/* This is for types registered using the dynamic registrar */
-	int gc_handle = 0;
+	gpointer gc_handle = NULL;
 	pthread_mutex_lock (&gchandle_hash_lock);
 	if (gchandle_hash != NULL)
-		gc_handle = GPOINTER_TO_INT (CFDictionaryGetValue (gchandle_hash, self));
+		gc_handle = (gpointer) CFDictionaryGetValue (gchandle_hash, self); //GPOINTER_TO_INT (CFDictionaryGetValue (gchandle_hash, self));
 	pthread_mutex_unlock (&gchandle_hash_lock);
 	return gc_handle;
 }
 
 id
-xamarin_generate_conversion_to_native (MonoObject *value, MonoType *inputType, MonoType *outputType, MonoMethod *method, void *context, guint32 *exception_gchandle)
+xamarin_generate_conversion_to_native (MonoObject *value, MonoType *inputType, MonoType *outputType, MonoMethod *method, void *context, gpointer *exception_gchandle)
 {
 	// COOP: Reads managed memory, needs to be in UNSAFE mode
 	MONO_ASSERT_GC_UNSAFE;
@@ -714,7 +714,7 @@ exception_handling:
 
 
 void *
-xamarin_generate_conversion_to_managed (id value, MonoType *inputType, MonoType *outputType, MonoMethod *method, guint32 *exception_gchandle, void *context, /*SList*/ void **free_list)
+xamarin_generate_conversion_to_managed (id value, MonoType *inputType, MonoType *outputType, MonoMethod *method, gpointer *exception_gchandle, void *context, /*SList*/ void **free_list)
 {
 	// COOP: Reads managed memory, needs to be in UNSAFE mode
 	MONO_ASSERT_GC_UNSAFE;
@@ -734,7 +734,7 @@ xamarin_generate_conversion_to_managed (id value, MonoType *inputType, MonoType 
 
 	MonoClass *nullableManagedType = NULL;
 	bool isManagedNullable = xamarin_is_class_nullable (managedType, &nullableManagedType, exception_gchandle);
-	if (*exception_gchandle != 0)
+	if (*exception_gchandle != NULL)
 		goto exception_handling;
 
 	if (isManagedArray != isNativeArray) {
@@ -765,16 +765,16 @@ xamarin_generate_conversion_to_managed (id value, MonoType *inputType, MonoType 
 			*exception_gchandle = xamarin_create_bindas_exception (inputType, outputType, method);
 			goto exception_handling;
 		}
-		if (*exception_gchandle != 0)
+		if (*exception_gchandle != NULL)
 			goto exception_handling;
 
 		if (isManagedArray) {
 			convertedValue = xamarin_convert_nsarray_to_managed_with_func (value, underlyingManagedType, func, context, exception_gchandle);
-			if (*exception_gchandle != 0)
+			if (*exception_gchandle != NULL)
 				goto exception_handling;
 		} else {
 			convertedValue = func (value, NULL, underlyingManagedType, context, exception_gchandle);
-			if (*exception_gchandle != 0)
+			if (*exception_gchandle != NULL)
 				goto exception_handling;
 			*(SList **) free_list = s_list_prepend (*(SList **) free_list, convertedValue);
 
@@ -793,55 +793,55 @@ exception_handling:
 
 // Returns a pointer to the value type, which must be freed using xamarin_free.
 // If called multiple times in succession, the returned pointer can be passed as the second ptr argument, and it need only be freed once done iterating.
-void *xamarin_nsnumber_to_bool   (NSNumber *number, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle) {       BOOL *valueptr =       (BOOL *) (ptr ? ptr : xamarin_calloc (sizeof (BOOL)));       *valueptr = [number boolValue];             return valueptr; }
-void *xamarin_nsnumber_to_sbyte  (NSNumber *number, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle) {     int8_t *valueptr =     (int8_t *) (ptr ? ptr : xamarin_calloc (sizeof (int8_t)));     *valueptr = [number charValue];             return valueptr; }
-void *xamarin_nsnumber_to_byte   (NSNumber *number, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle) {    uint8_t *valueptr =    (uint8_t *) (ptr ? ptr : xamarin_calloc (sizeof (uint8_t)));    *valueptr = [number unsignedCharValue];     return valueptr; }
-void *xamarin_nsnumber_to_short  (NSNumber *number, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle) {    int16_t *valueptr =    (int16_t *) (ptr ? ptr : xamarin_calloc (sizeof (int16_t)));    *valueptr = [number shortValue];            return valueptr; }
-void *xamarin_nsnumber_to_ushort (NSNumber *number, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle) {   uint16_t *valueptr =   (uint16_t *) (ptr ? ptr : xamarin_calloc (sizeof (uint16_t)));   *valueptr = [number unsignedShortValue];    return valueptr; }
-void *xamarin_nsnumber_to_int    (NSNumber *number, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle) {    int32_t *valueptr =    (int32_t *) (ptr ? ptr : xamarin_calloc (sizeof (int32_t)));    *valueptr = [number intValue];              return valueptr; }
-void *xamarin_nsnumber_to_uint   (NSNumber *number, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle) {   uint32_t *valueptr =   (uint32_t *) (ptr ? ptr : xamarin_calloc (sizeof (uint32_t)));   *valueptr = [number unsignedIntValue];      return valueptr; }
-void *xamarin_nsnumber_to_long   (NSNumber *number, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle) {    int64_t *valueptr =    (int64_t *) (ptr ? ptr : xamarin_calloc (sizeof (int64_t)));    *valueptr = [number longLongValue];         return valueptr; }
-void *xamarin_nsnumber_to_ulong  (NSNumber *number, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle) {   uint64_t *valueptr =   (uint64_t *) (ptr ? ptr : xamarin_calloc (sizeof (uint64_t)));   *valueptr = [number unsignedLongLongValue]; return valueptr; }
-void *xamarin_nsnumber_to_nint   (NSNumber *number, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle) {  NSInteger *valueptr =  (NSInteger *) (ptr ? ptr : xamarin_calloc (sizeof (NSInteger)));  *valueptr = [number integerValue];          return valueptr; }
-void *xamarin_nsnumber_to_nuint  (NSNumber *number, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle) { NSUInteger *valueptr = (NSUInteger *) (ptr ? ptr : xamarin_calloc (sizeof (NSUInteger))); *valueptr = [number unsignedIntegerValue];  return valueptr; }
-void *xamarin_nsnumber_to_float  (NSNumber *number, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle) {      float *valueptr =      (float *) (ptr ? ptr : xamarin_calloc (sizeof (float)));      *valueptr = [number floatValue];            return valueptr; }
-void *xamarin_nsnumber_to_double (NSNumber *number, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle) {     double *valueptr =     (double *) (ptr ? ptr : xamarin_calloc (sizeof (double)));     *valueptr = [number doubleValue];           return valueptr; }
+void *xamarin_nsnumber_to_bool   (NSNumber *number, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle) {       BOOL *valueptr =       (BOOL *) (ptr ? ptr : xamarin_calloc (sizeof (BOOL)));       *valueptr = [number boolValue];             return valueptr; }
+void *xamarin_nsnumber_to_sbyte  (NSNumber *number, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle) {     int8_t *valueptr =     (int8_t *) (ptr ? ptr : xamarin_calloc (sizeof (int8_t)));     *valueptr = [number charValue];             return valueptr; }
+void *xamarin_nsnumber_to_byte   (NSNumber *number, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle) {    uint8_t *valueptr =    (uint8_t *) (ptr ? ptr : xamarin_calloc (sizeof (uint8_t)));    *valueptr = [number unsignedCharValue];     return valueptr; }
+void *xamarin_nsnumber_to_short  (NSNumber *number, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle) {    int16_t *valueptr =    (int16_t *) (ptr ? ptr : xamarin_calloc (sizeof (int16_t)));    *valueptr = [number shortValue];            return valueptr; }
+void *xamarin_nsnumber_to_ushort (NSNumber *number, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle) {   uint16_t *valueptr =   (uint16_t *) (ptr ? ptr : xamarin_calloc (sizeof (uint16_t)));   *valueptr = [number unsignedShortValue];    return valueptr; }
+void *xamarin_nsnumber_to_int    (NSNumber *number, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle) {    int32_t *valueptr =    (int32_t *) (ptr ? ptr : xamarin_calloc (sizeof (int32_t)));    *valueptr = [number intValue];              return valueptr; }
+void *xamarin_nsnumber_to_uint   (NSNumber *number, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle) {   uint32_t *valueptr =   (uint32_t *) (ptr ? ptr : xamarin_calloc (sizeof (uint32_t)));   *valueptr = [number unsignedIntValue];      return valueptr; }
+void *xamarin_nsnumber_to_long   (NSNumber *number, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle) {    int64_t *valueptr =    (int64_t *) (ptr ? ptr : xamarin_calloc (sizeof (int64_t)));    *valueptr = [number longLongValue];         return valueptr; }
+void *xamarin_nsnumber_to_ulong  (NSNumber *number, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle) {   uint64_t *valueptr =   (uint64_t *) (ptr ? ptr : xamarin_calloc (sizeof (uint64_t)));   *valueptr = [number unsignedLongLongValue]; return valueptr; }
+void *xamarin_nsnumber_to_nint   (NSNumber *number, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle) {  NSInteger *valueptr =  (NSInteger *) (ptr ? ptr : xamarin_calloc (sizeof (NSInteger)));  *valueptr = [number integerValue];          return valueptr; }
+void *xamarin_nsnumber_to_nuint  (NSNumber *number, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle) { NSUInteger *valueptr = (NSUInteger *) (ptr ? ptr : xamarin_calloc (sizeof (NSUInteger))); *valueptr = [number unsignedIntegerValue];  return valueptr; }
+void *xamarin_nsnumber_to_float  (NSNumber *number, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle) {      float *valueptr =      (float *) (ptr ? ptr : xamarin_calloc (sizeof (float)));      *valueptr = [number floatValue];            return valueptr; }
+void *xamarin_nsnumber_to_double (NSNumber *number, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle) {     double *valueptr =     (double *) (ptr ? ptr : xamarin_calloc (sizeof (double)));     *valueptr = [number doubleValue];           return valueptr; }
 #if __POINTER_WIDTH__ == 32
-void *xamarin_nsnumber_to_nfloat (NSNumber *number, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle) {      float *valueptr =      (float *) (ptr ? ptr : xamarin_calloc (sizeof (float)));      *valueptr = [number floatValue];            return valueptr; }
+void *xamarin_nsnumber_to_nfloat (NSNumber *number, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle) {      float *valueptr =      (float *) (ptr ? ptr : xamarin_calloc (sizeof (float)));      *valueptr = [number floatValue];            return valueptr; }
 #elif __POINTER_WIDTH__ == 64
-void *xamarin_nsnumber_to_nfloat (NSNumber *number, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle) {     double *valueptr =     (double *) (ptr ? ptr : xamarin_calloc (sizeof (double)));     *valueptr = [number doubleValue];           return valueptr; }
+void *xamarin_nsnumber_to_nfloat (NSNumber *number, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle) {     double *valueptr =     (double *) (ptr ? ptr : xamarin_calloc (sizeof (double)));     *valueptr = [number doubleValue];           return valueptr; }
 #else
 	#error Invalid pointer size.
 #endif
 
 // Returns a pointer to the value type, which must be freed using xamarin_free.
 // If called multiple times in succession, the returned pointer can be passed as the second ptr argument, and it need only be freed once done iterating.
-void *xamarin_nsvalue_to_nsrange                (NSValue *value, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle) {                NSRange *valueptr =                (NSRange *) (ptr ? ptr : xamarin_calloc (sizeof (NSRange)));                *valueptr = [value rangeValue];             return valueptr; }
+void *xamarin_nsvalue_to_nsrange                (NSValue *value, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle) {                NSRange *valueptr =                (NSRange *) (ptr ? ptr : xamarin_calloc (sizeof (NSRange)));                *valueptr = [value rangeValue];             return valueptr; }
 #if HAVE_UIKIT // Yep, these CoreGraphics-looking category method is defined in UIKit.
-void *xamarin_nsvalue_to_cgaffinetransform      (NSValue *value, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle) {      CGAffineTransform *valueptr =      (CGAffineTransform *) (ptr ? ptr : xamarin_calloc (sizeof (CGAffineTransform)));      *valueptr = [value CGAffineTransformValue]; return valueptr; }
-void *xamarin_nsvalue_to_cgpoint                (NSValue *value, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle) {                CGPoint *valueptr =                (CGPoint *) (ptr ? ptr : xamarin_calloc (sizeof (CGPoint)));                *valueptr = [value CGPointValue];           return valueptr; }
-void *xamarin_nsvalue_to_cgrect                 (NSValue *value, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle) {                 CGRect *valueptr =                 (CGRect *) (ptr ? ptr : xamarin_calloc (sizeof (CGRect)));                 *valueptr = [value CGRectValue];            return valueptr; }
-void *xamarin_nsvalue_to_cgsize                 (NSValue *value, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle) {                 CGSize *valueptr =                 (CGSize *) (ptr ? ptr : xamarin_calloc (sizeof (CGSize)));                 *valueptr = [value CGSizeValue];            return valueptr; }
-void *xamarin_nsvalue_to_cgvector               (NSValue *value, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle) {               CGVector *valueptr =               (CGVector *) (ptr ? ptr : xamarin_calloc (sizeof (CGVector)));               *valueptr = [value CGVectorValue];          return valueptr; }
-void *xamarin_nsvalue_to_nsdirectionaledgeinsets(NSValue *value, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle) {NSDirectionalEdgeInsets *valueptr =(NSDirectionalEdgeInsets *) (ptr ? ptr : xamarin_calloc (sizeof (NSDirectionalEdgeInsets)));*valueptr = [value directionalEdgeInsetsValue];return valueptr; }
+void *xamarin_nsvalue_to_cgaffinetransform      (NSValue *value, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle) {      CGAffineTransform *valueptr =      (CGAffineTransform *) (ptr ? ptr : xamarin_calloc (sizeof (CGAffineTransform)));      *valueptr = [value CGAffineTransformValue]; return valueptr; }
+void *xamarin_nsvalue_to_cgpoint                (NSValue *value, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle) {                CGPoint *valueptr =                (CGPoint *) (ptr ? ptr : xamarin_calloc (sizeof (CGPoint)));                *valueptr = [value CGPointValue];           return valueptr; }
+void *xamarin_nsvalue_to_cgrect                 (NSValue *value, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle) {                 CGRect *valueptr =                 (CGRect *) (ptr ? ptr : xamarin_calloc (sizeof (CGRect)));                 *valueptr = [value CGRectValue];            return valueptr; }
+void *xamarin_nsvalue_to_cgsize                 (NSValue *value, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle) {                 CGSize *valueptr =                 (CGSize *) (ptr ? ptr : xamarin_calloc (sizeof (CGSize)));                 *valueptr = [value CGSizeValue];            return valueptr; }
+void *xamarin_nsvalue_to_cgvector               (NSValue *value, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle) {               CGVector *valueptr =               (CGVector *) (ptr ? ptr : xamarin_calloc (sizeof (CGVector)));               *valueptr = [value CGVectorValue];          return valueptr; }
+void *xamarin_nsvalue_to_nsdirectionaledgeinsets(NSValue *value, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle) {NSDirectionalEdgeInsets *valueptr =(NSDirectionalEdgeInsets *) (ptr ? ptr : xamarin_calloc (sizeof (NSDirectionalEdgeInsets)));*valueptr = [value directionalEdgeInsetsValue];return valueptr; }
 #endif
 #if HAVE_COREANIMATION
-void *xamarin_nsvalue_to_catransform3d          (NSValue *value, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle) {          CATransform3D *valueptr =          (CATransform3D *) (ptr ? ptr : xamarin_calloc (sizeof (CATransform3D)));          *valueptr = [value CATransform3DValue];     return valueptr; }
+void *xamarin_nsvalue_to_catransform3d          (NSValue *value, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle) {          CATransform3D *valueptr =          (CATransform3D *) (ptr ? ptr : xamarin_calloc (sizeof (CATransform3D)));          *valueptr = [value CATransform3DValue];     return valueptr; }
 #endif
 #if HAVE_MAPKIT // Yep, this is defined in MapKit.
-void *xamarin_nsvalue_to_cllocationcoordinate2d (NSValue *value, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle) { CLLocationCoordinate2D *valueptr = (CLLocationCoordinate2D *) (ptr ? ptr : xamarin_calloc (sizeof (CLLocationCoordinate2D))); *valueptr = [value MKCoordinateValue];      return valueptr; }
+void *xamarin_nsvalue_to_cllocationcoordinate2d (NSValue *value, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle) { CLLocationCoordinate2D *valueptr = (CLLocationCoordinate2D *) (ptr ? ptr : xamarin_calloc (sizeof (CLLocationCoordinate2D))); *valueptr = [value MKCoordinateValue];      return valueptr; }
 #endif
 #if HAVE_COREMEDIA
-void *xamarin_nsvalue_to_cmtime                 (NSValue *value, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle) {                 CMTime *valueptr =                 (CMTime *) (ptr ? ptr : xamarin_calloc (sizeof (CMTime)));                 *valueptr = [value CMTimeValue];            return valueptr; }
-void *xamarin_nsvalue_to_cmtimemapping          (NSValue *value, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle) {          CMTimeMapping *valueptr =          (CMTimeMapping *) (ptr ? ptr : xamarin_calloc (sizeof (CMTimeMapping)));          *valueptr = [value CMTimeMappingValue];     return valueptr; }
-void *xamarin_nsvalue_to_cmtimerange            (NSValue *value, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle) {            CMTimeRange *valueptr =            (CMTimeRange *) (ptr ? ptr : xamarin_calloc (sizeof (CMTimeRange)));            *valueptr = [value CMTimeRangeValue];       return valueptr; }
+void *xamarin_nsvalue_to_cmtime                 (NSValue *value, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle) {                 CMTime *valueptr =                 (CMTime *) (ptr ? ptr : xamarin_calloc (sizeof (CMTime)));                 *valueptr = [value CMTimeValue];            return valueptr; }
+void *xamarin_nsvalue_to_cmtimemapping          (NSValue *value, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle) {          CMTimeMapping *valueptr =          (CMTimeMapping *) (ptr ? ptr : xamarin_calloc (sizeof (CMTimeMapping)));          *valueptr = [value CMTimeMappingValue];     return valueptr; }
+void *xamarin_nsvalue_to_cmtimerange            (NSValue *value, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle) {            CMTimeRange *valueptr =            (CMTimeRange *) (ptr ? ptr : xamarin_calloc (sizeof (CMTimeRange)));            *valueptr = [value CMTimeRangeValue];       return valueptr; }
 #endif
 #if HAVE_MAPKIT
-void *xamarin_nsvalue_to_mkcoordinatespan       (NSValue *value, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle) {       MKCoordinateSpan *valueptr =       (MKCoordinateSpan *) (ptr ? ptr : xamarin_calloc (sizeof (MKCoordinateSpan)));       *valueptr = [value MKCoordinateSpanValue];  return valueptr; }
+void *xamarin_nsvalue_to_mkcoordinatespan       (NSValue *value, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle) {       MKCoordinateSpan *valueptr =       (MKCoordinateSpan *) (ptr ? ptr : xamarin_calloc (sizeof (MKCoordinateSpan)));       *valueptr = [value MKCoordinateSpanValue];  return valueptr; }
 #endif
-void *xamarin_nsvalue_to_scnmatrix4             (NSValue *value, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle) {             SCNMatrix4 *valueptr =             (SCNMatrix4 *) (ptr ? ptr : xamarin_calloc (sizeof (SCNMatrix4)));             *valueptr = [value SCNMatrix4Value];        return valueptr; }
+void *xamarin_nsvalue_to_scnmatrix4             (NSValue *value, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle) {             SCNMatrix4 *valueptr =             (SCNMatrix4 *) (ptr ? ptr : xamarin_calloc (sizeof (SCNMatrix4)));             *valueptr = [value SCNMatrix4Value];        return valueptr; }
 void *
-xamarin_nsvalue_to_scnvector3 (NSValue *value, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle)
+xamarin_nsvalue_to_scnvector3 (NSValue *value, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle)
 {
 #if TARGET_OS_IOS && defined (__arm__)
 	// In earlier versions of iOS [NSValue SCNVector3Value] would return 4
@@ -879,62 +879,62 @@ xamarin_nsvalue_to_scnvector3 (NSValue *value, void *ptr, MonoClass *managedType
 
 	return valueptr;
 }
-void *xamarin_nsvalue_to_scnvector4             (NSValue *value, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle) {             SCNVector4 *valueptr =             (SCNVector4 *) (ptr ? ptr : xamarin_calloc (sizeof (SCNVector4)));             *valueptr = [value SCNVector4Value];        return valueptr; }
+void *xamarin_nsvalue_to_scnvector4             (NSValue *value, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle) {             SCNVector4 *valueptr =             (SCNVector4 *) (ptr ? ptr : xamarin_calloc (sizeof (SCNVector4)));             *valueptr = [value SCNVector4Value];        return valueptr; }
 #if HAVE_UIKIT
-void *xamarin_nsvalue_to_uiedgeinsets           (NSValue *value, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle) {           UIEdgeInsets *valueptr =           (UIEdgeInsets *) (ptr ? ptr : xamarin_calloc (sizeof (UIEdgeInsets)));           *valueptr = [value UIEdgeInsetsValue];      return valueptr; }
-void *xamarin_nsvalue_to_uioffset               (NSValue *value, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle) {               UIOffset *valueptr =               (UIOffset *) (ptr ? ptr : xamarin_calloc (sizeof (UIOffset)));               *valueptr = [value UIOffsetValue];          return valueptr; }
+void *xamarin_nsvalue_to_uiedgeinsets           (NSValue *value, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle) {           UIEdgeInsets *valueptr =           (UIEdgeInsets *) (ptr ? ptr : xamarin_calloc (sizeof (UIEdgeInsets)));           *valueptr = [value UIEdgeInsetsValue];      return valueptr; }
+void *xamarin_nsvalue_to_uioffset               (NSValue *value, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle) {               UIOffset *valueptr =               (UIOffset *) (ptr ? ptr : xamarin_calloc (sizeof (UIOffset)));               *valueptr = [value UIOffsetValue];          return valueptr; }
 #endif
 
-id xamarin_bool_to_nsnumber   (MonoObject *value, void *context, guint32 *exception_gchandle) { return [NSNumber numberWithBool:                  *(BOOL *) mono_object_unbox (value)]; }
-id xamarin_sbyte_to_nsnumber  (MonoObject *value, void *context, guint32 *exception_gchandle) { return [NSNumber numberWithChar:                *(int8_t *) mono_object_unbox (value)]; }
-id xamarin_byte_to_nsnumber   (MonoObject *value, void *context, guint32 *exception_gchandle) { return [NSNumber numberWithUnsignedChar:       *(uint8_t *) mono_object_unbox (value)]; }
-id xamarin_short_to_nsnumber  (MonoObject *value, void *context, guint32 *exception_gchandle) { return [NSNumber numberWithShort:              *(int16_t *) mono_object_unbox (value)]; }
-id xamarin_ushort_to_nsnumber (MonoObject *value, void *context, guint32 *exception_gchandle) { return [NSNumber numberWithUnsignedShort:     *(uint16_t *) mono_object_unbox (value)]; }
-id xamarin_int_to_nsnumber    (MonoObject *value, void *context, guint32 *exception_gchandle) { return [NSNumber numberWithInt:                *(int32_t *) mono_object_unbox (value)]; }
-id xamarin_uint_to_nsnumber   (MonoObject *value, void *context, guint32 *exception_gchandle) { return [NSNumber numberWithUnsignedInt:       *(uint32_t *) mono_object_unbox (value)]; }
-id xamarin_long_to_nsnumber   (MonoObject *value, void *context, guint32 *exception_gchandle) { return [NSNumber numberWithLongLong:           *(int64_t *) mono_object_unbox (value)]; }
-id xamarin_ulong_to_nsnumber  (MonoObject *value, void *context, guint32 *exception_gchandle) { return [NSNumber numberWithUnsignedLongLong:  *(uint64_t *) mono_object_unbox (value)]; }
-id xamarin_nint_to_nsnumber   (MonoObject *value, void *context, guint32 *exception_gchandle) { return [NSNumber numberWithInteger:          *(NSInteger *) mono_object_unbox (value)]; }
-id xamarin_nuint_to_nsnumber  (MonoObject *value, void *context, guint32 *exception_gchandle) { return [NSNumber numberWithUnsignedInteger: *(NSUInteger *) mono_object_unbox (value)]; }
-id xamarin_float_to_nsnumber  (MonoObject *value, void *context, guint32 *exception_gchandle) { return [NSNumber numberWithFloat:                *(float *) mono_object_unbox (value)]; }
-id xamarin_double_to_nsnumber (MonoObject *value, void *context, guint32 *exception_gchandle) { return [NSNumber numberWithDouble:              *(double *) mono_object_unbox (value)]; }
+id xamarin_bool_to_nsnumber   (MonoObject *value, void *context, gpointer *exception_gchandle) { return [NSNumber numberWithBool:                  *(BOOL *) mono_object_unbox (value)]; }
+id xamarin_sbyte_to_nsnumber  (MonoObject *value, void *context, gpointer *exception_gchandle) { return [NSNumber numberWithChar:                *(int8_t *) mono_object_unbox (value)]; }
+id xamarin_byte_to_nsnumber   (MonoObject *value, void *context, gpointer *exception_gchandle) { return [NSNumber numberWithUnsignedChar:       *(uint8_t *) mono_object_unbox (value)]; }
+id xamarin_short_to_nsnumber  (MonoObject *value, void *context, gpointer *exception_gchandle) { return [NSNumber numberWithShort:              *(int16_t *) mono_object_unbox (value)]; }
+id xamarin_ushort_to_nsnumber (MonoObject *value, void *context, gpointer *exception_gchandle) { return [NSNumber numberWithUnsignedShort:     *(uint16_t *) mono_object_unbox (value)]; }
+id xamarin_int_to_nsnumber    (MonoObject *value, void *context, gpointer *exception_gchandle) { return [NSNumber numberWithInt:                *(int32_t *) mono_object_unbox (value)]; }
+id xamarin_uint_to_nsnumber   (MonoObject *value, void *context, gpointer *exception_gchandle) { return [NSNumber numberWithUnsignedInt:       *(uint32_t *) mono_object_unbox (value)]; }
+id xamarin_long_to_nsnumber   (MonoObject *value, void *context, gpointer *exception_gchandle) { return [NSNumber numberWithLongLong:           *(int64_t *) mono_object_unbox (value)]; }
+id xamarin_ulong_to_nsnumber  (MonoObject *value, void *context, gpointer *exception_gchandle) { return [NSNumber numberWithUnsignedLongLong:  *(uint64_t *) mono_object_unbox (value)]; }
+id xamarin_nint_to_nsnumber   (MonoObject *value, void *context, gpointer *exception_gchandle) { return [NSNumber numberWithInteger:          *(NSInteger *) mono_object_unbox (value)]; }
+id xamarin_nuint_to_nsnumber  (MonoObject *value, void *context, gpointer *exception_gchandle) { return [NSNumber numberWithUnsignedInteger: *(NSUInteger *) mono_object_unbox (value)]; }
+id xamarin_float_to_nsnumber  (MonoObject *value, void *context, gpointer *exception_gchandle) { return [NSNumber numberWithFloat:                *(float *) mono_object_unbox (value)]; }
+id xamarin_double_to_nsnumber (MonoObject *value, void *context, gpointer *exception_gchandle) { return [NSNumber numberWithDouble:              *(double *) mono_object_unbox (value)]; }
 #if __POINTER_WIDTH__ == 32
-id xamarin_nfloat_to_nsnumber (MonoObject *value, void *context, guint32 *exception_gchandle) { return [NSNumber numberWithFloat:                *(float *) mono_object_unbox (value)]; }
+id xamarin_nfloat_to_nsnumber (MonoObject *value, void *context, gpointer *exception_gchandle) { return [NSNumber numberWithFloat:                *(float *) mono_object_unbox (value)]; }
 #elif __POINTER_WIDTH__ == 64
-id xamarin_nfloat_to_nsnumber (MonoObject *value, void *context, guint32 *exception_gchandle) { return [NSNumber numberWithDouble:              *(double *) mono_object_unbox (value)]; }
+id xamarin_nfloat_to_nsnumber (MonoObject *value, void *context, gpointer *exception_gchandle) { return [NSNumber numberWithDouble:              *(double *) mono_object_unbox (value)]; }
 #else
 	#error Invalid pointer size.
 #endif
 
-id xamarin_nsrange_to_nsvalue                (MonoObject *value, void *context, guint32 *exception_gchandle) { return [NSValue valueWithRange:               *(NSRange *)                mono_object_unbox (value)]; }
+id xamarin_nsrange_to_nsvalue                (MonoObject *value, void *context, gpointer *exception_gchandle) { return [NSValue valueWithRange:               *(NSRange *)                mono_object_unbox (value)]; }
 #if HAVE_UIKIT // yep, these CoreGraphics-looking category methods are defined in UIKit
-id xamarin_cgaffinetransform_to_nsvalue      (MonoObject *value, void *context, guint32 *exception_gchandle) { return [NSValue valueWithCGAffineTransform:   *(CGAffineTransform *)      mono_object_unbox (value)]; }
-id xamarin_cgpoint_to_nsvalue                (MonoObject *value, void *context, guint32 *exception_gchandle) { return [NSValue valueWithCGPoint:             *(CGPoint *)                mono_object_unbox (value)]; }
-id xamarin_cgrect_to_nsvalue                 (MonoObject *value, void *context, guint32 *exception_gchandle) { return [NSValue valueWithCGRect:              *(CGRect *)                 mono_object_unbox (value)]; }
-id xamarin_cgsize_to_nsvalue                 (MonoObject *value, void *context, guint32 *exception_gchandle) { return [NSValue valueWithCGSize:              *(CGSize *)                 mono_object_unbox (value)]; }
-id xamarin_cgvector_to_nsvalue               (MonoObject *value, void *context, guint32 *exception_gchandle) { return [NSValue valueWithCGVector:            *(CGVector *)               mono_object_unbox (value)]; }
-id xamarin_nsdirectionaledgeinsets_to_nsvalue(MonoObject *value, void *context, guint32 *exception_gchandle) { return [NSValue valueWithDirectionalEdgeInsets:*(NSDirectionalEdgeInsets *)mono_object_unbox (value)]; }
+id xamarin_cgaffinetransform_to_nsvalue      (MonoObject *value, void *context, gpointer *exception_gchandle) { return [NSValue valueWithCGAffineTransform:   *(CGAffineTransform *)      mono_object_unbox (value)]; }
+id xamarin_cgpoint_to_nsvalue                (MonoObject *value, void *context, gpointer *exception_gchandle) { return [NSValue valueWithCGPoint:             *(CGPoint *)                mono_object_unbox (value)]; }
+id xamarin_cgrect_to_nsvalue                 (MonoObject *value, void *context, gpointer *exception_gchandle) { return [NSValue valueWithCGRect:              *(CGRect *)                 mono_object_unbox (value)]; }
+id xamarin_cgsize_to_nsvalue                 (MonoObject *value, void *context, gpointer *exception_gchandle) { return [NSValue valueWithCGSize:              *(CGSize *)                 mono_object_unbox (value)]; }
+id xamarin_cgvector_to_nsvalue               (MonoObject *value, void *context, gpointer *exception_gchandle) { return [NSValue valueWithCGVector:            *(CGVector *)               mono_object_unbox (value)]; }
+id xamarin_nsdirectionaledgeinsets_to_nsvalue(MonoObject *value, void *context, gpointer *exception_gchandle) { return [NSValue valueWithDirectionalEdgeInsets:*(NSDirectionalEdgeInsets *)mono_object_unbox (value)]; }
 #endif
 #if HAVE_COREANIMATION
-id xamarin_catransform3d_to_nsvalue          (MonoObject *value, void *context, guint32 *exception_gchandle) { return [NSValue valueWithCATransform3D:       *(CATransform3D *)          mono_object_unbox (value)]; }
+id xamarin_catransform3d_to_nsvalue          (MonoObject *value, void *context, gpointer *exception_gchandle) { return [NSValue valueWithCATransform3D:       *(CATransform3D *)          mono_object_unbox (value)]; }
 #endif
 #if HAVE_MAPKIT // Yep, this is defined in MapKit.
-id xamarin_cllocationcoordinate2d_to_nsvalue (MonoObject *value, void *context, guint32 *exception_gchandle) { return [NSValue valueWithMKCoordinate:        *(CLLocationCoordinate2D *) mono_object_unbox (value)]; }
+id xamarin_cllocationcoordinate2d_to_nsvalue (MonoObject *value, void *context, gpointer *exception_gchandle) { return [NSValue valueWithMKCoordinate:        *(CLLocationCoordinate2D *) mono_object_unbox (value)]; }
 #endif
 #if HAVE_COREMEDIA
-id xamarin_cmtime_to_nsvalue                 (MonoObject *value, void *context, guint32 *exception_gchandle) { return [NSValue valueWithCMTime:              *(CMTime *)                 mono_object_unbox (value)]; }
-id xamarin_cmtimemapping_to_nsvalue          (MonoObject *value, void *context, guint32 *exception_gchandle) { return [NSValue valueWithCMTimeMapping:       *(CMTimeMapping *)          mono_object_unbox (value)]; }
-id xamarin_cmtimerange_to_nsvalue            (MonoObject *value, void *context, guint32 *exception_gchandle) { return [NSValue valueWithCMTimeRange:         *(CMTimeRange *)            mono_object_unbox (value)]; }
+id xamarin_cmtime_to_nsvalue                 (MonoObject *value, void *context, gpointer *exception_gchandle) { return [NSValue valueWithCMTime:              *(CMTime *)                 mono_object_unbox (value)]; }
+id xamarin_cmtimemapping_to_nsvalue          (MonoObject *value, void *context, gpointer *exception_gchandle) { return [NSValue valueWithCMTimeMapping:       *(CMTimeMapping *)          mono_object_unbox (value)]; }
+id xamarin_cmtimerange_to_nsvalue            (MonoObject *value, void *context, gpointer *exception_gchandle) { return [NSValue valueWithCMTimeRange:         *(CMTimeRange *)            mono_object_unbox (value)]; }
 #endif
 #if HAVE_MAPKIT
-id xamarin_mkcoordinatespan_to_nsvalue       (MonoObject *value, void *context, guint32 *exception_gchandle) { return [NSValue valueWithMKCoordinateSpan:    *(MKCoordinateSpan *)       mono_object_unbox (value)]; }
+id xamarin_mkcoordinatespan_to_nsvalue       (MonoObject *value, void *context, gpointer *exception_gchandle) { return [NSValue valueWithMKCoordinateSpan:    *(MKCoordinateSpan *)       mono_object_unbox (value)]; }
 #endif
-id xamarin_scnmatrix4_to_nsvalue             (MonoObject *value, void *context, guint32 *exception_gchandle) { return [NSValue valueWithSCNMatrix4:          *(SCNMatrix4 *)             mono_object_unbox (value)]; }
-id xamarin_scnvector3_to_nsvalue             (MonoObject *value, void *context, guint32 *exception_gchandle) { return [NSValue valueWithSCNVector3:          *(SCNVector3 *)             mono_object_unbox (value)]; }
-id xamarin_scnvector4_to_nsvalue             (MonoObject *value, void *context, guint32 *exception_gchandle) { return [NSValue valueWithSCNVector4:          *(SCNVector4 *)             mono_object_unbox (value)]; }
+id xamarin_scnmatrix4_to_nsvalue             (MonoObject *value, void *context, gpointer *exception_gchandle) { return [NSValue valueWithSCNMatrix4:          *(SCNMatrix4 *)             mono_object_unbox (value)]; }
+id xamarin_scnvector3_to_nsvalue             (MonoObject *value, void *context, gpointer *exception_gchandle) { return [NSValue valueWithSCNVector3:          *(SCNVector3 *)             mono_object_unbox (value)]; }
+id xamarin_scnvector4_to_nsvalue             (MonoObject *value, void *context, gpointer *exception_gchandle) { return [NSValue valueWithSCNVector4:          *(SCNVector4 *)             mono_object_unbox (value)]; }
 #if HAVE_UIKIT
-id xamarin_uiedgeinsets_to_nsvalue           (MonoObject *value, void *context, guint32 *exception_gchandle) { return [NSValue valueWithUIEdgeInsets:        *(UIEdgeInsets *)           mono_object_unbox (value)]; }
-id xamarin_uioffset_to_nsvalue               (MonoObject *value, void *context, guint32 *exception_gchandle) { return [NSValue valueWithUIOffset:            *(UIOffset *)               mono_object_unbox (value)]; }
+id xamarin_uiedgeinsets_to_nsvalue           (MonoObject *value, void *context, gpointer *exception_gchandle) { return [NSValue valueWithUIEdgeInsets:        *(UIEdgeInsets *)           mono_object_unbox (value)]; }
+id xamarin_uioffset_to_nsvalue               (MonoObject *value, void *context, gpointer *exception_gchandle) { return [NSValue valueWithUIOffset:            *(UIOffset *)               mono_object_unbox (value)]; }
 #endif
 
 #pragma clang diagnostic pop
@@ -949,70 +949,70 @@ struct conversion_data {
 };
 
 id
-xamarin_convert_string_to_nsstring (MonoObject *obj, void *context, guint32 *exception_gchandle)
+xamarin_convert_string_to_nsstring (MonoObject *obj, void *context, gpointer *exception_gchandle)
 {
 	return xamarin_string_to_nsstring ((MonoString *) obj, false);
 }
 
 void *
-xamarin_convert_nsstring_to_string (id value, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle)
+xamarin_convert_nsstring_to_string (id value, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle)
 {
 	return xamarin_nsstring_to_string (NULL, (NSString *) value);
 }
 
 id
-xamarin_object_to_nsobject (MonoObject *object, void *context, guint32 *exception_gchandle)
+xamarin_object_to_nsobject (MonoObject *object, void *context, gpointer *exception_gchandle)
 {
 	return xamarin_get_nsobject_handle (object);
 }
 
 id
-xamarin_inativeobject_to_nsobject (MonoObject *object, void *context, guint32 *exception_gchandle)
+xamarin_inativeobject_to_nsobject (MonoObject *object, void *context, gpointer *exception_gchandle)
 {
 	return xamarin_get_handle_for_inativeobject (object, exception_gchandle);
 }
 
 void *
-xamarin_nsobject_to_object (id object, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle)
+xamarin_nsobject_to_object (id object, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle)
 {
 	struct conversion_data * data = (struct conversion_data *) context;
 	return xamarin_get_nsobject_with_type_for_ptr (object, false, data->element_type, exception_gchandle);
 }
 
 void *
-xamarin_nsobject_to_inativeobject (id object, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle)
+xamarin_nsobject_to_inativeobject (id object, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle)
 {
 	struct conversion_data * data = (struct conversion_data *) context;
 	return xamarin_get_inative_object_dynamic (object, false, data->element_reflection_type, exception_gchandle);
 }
 
 void *
-xamarin_nsobject_to_inativeobject_static (id object, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle)
+xamarin_nsobject_to_inativeobject_static (id object, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle)
 {
 	struct conversion_data * data = (struct conversion_data *) context;
 	return xamarin_get_inative_object_static (object, false, data->iface_token_ref, data->implementation_token_ref, exception_gchandle);
 }
 
 NSArray *
-xamarin_managed_string_array_to_nsarray (MonoArray *array, guint32 *exception_gchandle)
+xamarin_managed_string_array_to_nsarray (MonoArray *array, gpointer *exception_gchandle)
 {
 	return xamarin_convert_managed_to_nsarray_with_func (array, xamarin_convert_string_to_nsstring, 0, exception_gchandle);
 }
 
 NSArray *
-xamarin_managed_nsobject_array_to_nsarray (MonoArray *array, guint32 *exception_gchandle)
+xamarin_managed_nsobject_array_to_nsarray (MonoArray *array, gpointer *exception_gchandle)
 {
 	return xamarin_convert_managed_to_nsarray_with_func (array, xamarin_object_to_nsobject, 0, exception_gchandle);
 }
 
 NSArray *
-xamarin_managed_inativeobject_array_to_nsarray (MonoArray *array, guint32 *exception_gchandle)
+xamarin_managed_inativeobject_array_to_nsarray (MonoArray *array, gpointer *exception_gchandle)
 {
 	return xamarin_convert_managed_to_nsarray_with_func (array, xamarin_inativeobject_to_nsobject, 0, exception_gchandle);
 }
 
 NSArray *
-xamarin_managed_array_to_nsarray (MonoArray *array, MonoType *managed_type, MonoClass *managed_class, guint32 *exception_gchandle)
+xamarin_managed_array_to_nsarray (MonoArray *array, MonoType *managed_type, MonoClass *managed_class, gpointer *exception_gchandle)
 {
 	if (array == NULL)
 		return NULL;
@@ -1042,13 +1042,13 @@ xamarin_managed_array_to_nsarray (MonoArray *array, MonoType *managed_type, Mono
 }
 
 MonoArray *
-xamarin_nsarray_to_managed_string_array (NSArray *array, guint32 *exception_gchandle)
+xamarin_nsarray_to_managed_string_array (NSArray *array, gpointer *exception_gchandle)
 {
 	return xamarin_convert_nsarray_to_managed_with_func (array, mono_get_string_class (), xamarin_convert_nsstring_to_string, 0, exception_gchandle);
 }
 
 MonoArray *
-xamarin_nsarray_to_managed_nsobject_array (NSArray *array, MonoType *array_type, MonoClass *element_class, guint32 *exception_gchandle)
+xamarin_nsarray_to_managed_nsobject_array (NSArray *array, MonoType *array_type, MonoClass *element_class, gpointer *exception_gchandle)
 {
 	struct conversion_data data = { 0 };
 	data.domain = mono_domain_get ();
@@ -1059,7 +1059,7 @@ xamarin_nsarray_to_managed_nsobject_array (NSArray *array, MonoType *array_type,
 }
 
 MonoArray *
-xamarin_nsarray_to_managed_inativeobject_array (NSArray *array, MonoType *array_type, MonoClass *element_class, guint32 *exception_gchandle)
+xamarin_nsarray_to_managed_inativeobject_array (NSArray *array, MonoType *array_type, MonoClass *element_class, gpointer *exception_gchandle)
 {
 	struct conversion_data data = { 0 };
 	data.domain = mono_domain_get ();
@@ -1070,7 +1070,7 @@ xamarin_nsarray_to_managed_inativeobject_array (NSArray *array, MonoType *array_
 }
 
 MonoArray *
-xamarin_nsarray_to_managed_inativeobject_array_static (NSArray *array, MonoType *array_type, MonoClass *element_class, uint32_t iface_token_ref, uint32_t implementation_token_ref, guint32 *exception_gchandle)
+xamarin_nsarray_to_managed_inativeobject_array_static (NSArray *array, MonoType *array_type, MonoClass *element_class, uint32_t iface_token_ref, uint32_t implementation_token_ref, gpointer *exception_gchandle)
 {
 	struct conversion_data data = { 0 };
 	data.element_class = element_class == NULL ? mono_class_get_element_class (mono_class_from_mono_type (array_type)) : element_class;
@@ -1081,7 +1081,7 @@ xamarin_nsarray_to_managed_inativeobject_array_static (NSArray *array, MonoType 
 }
 
 MonoArray *
-xamarin_nsarray_to_managed_array (NSArray *array, MonoType *managed_type, MonoClass *managed_class, guint32 *exception_gchandle)
+xamarin_nsarray_to_managed_array (NSArray *array, MonoType *managed_type, MonoClass *managed_class, gpointer *exception_gchandle)
 {
 	if (array == NULL)
 		return NULL;
@@ -1110,7 +1110,7 @@ xamarin_nsarray_to_managed_array (NSArray *array, MonoType *managed_type, MonoCl
 }
 
 static void *
-xamarin_get_nsnumber_converter (MonoClass *managedType, MonoMethod *method, bool to_managed, guint32 *exception_gchandle)
+xamarin_get_nsnumber_converter (MonoClass *managedType, MonoMethod *method, bool to_managed, gpointer *exception_gchandle)
 {
 	int type;
 	void * func = NULL;
@@ -1176,7 +1176,7 @@ exception_handling:
 }
 
 static void *
-xamarin_get_nsvalue_converter (MonoClass *managedType, MonoMethod *method, bool to_managed, guint32 *exception_gchandle)
+xamarin_get_nsvalue_converter (MonoClass *managedType, MonoMethod *method, bool to_managed, gpointer *exception_gchandle)
 {
 	void * func = NULL;
 	char *fullname = xamarin_class_get_full_name (managedType, exception_gchandle);
@@ -1248,36 +1248,36 @@ exception_handling:
 }
 
 xamarin_id_to_managed_func
-xamarin_get_nsnumber_to_managed_func (MonoClass *managedType, MonoMethod *method, guint32 *exception_gchandle)
+xamarin_get_nsnumber_to_managed_func (MonoClass *managedType, MonoMethod *method, gpointer *exception_gchandle)
 {
 	return (xamarin_id_to_managed_func) xamarin_get_nsnumber_converter (managedType, method, true, exception_gchandle);
 }
 
 xamarin_managed_to_id_func
-xamarin_get_managed_to_nsnumber_func (MonoClass *managedType, MonoMethod *method, guint32 *exception_gchandle)
+xamarin_get_managed_to_nsnumber_func (MonoClass *managedType, MonoMethod *method, gpointer *exception_gchandle)
 {
 	return (xamarin_managed_to_id_func) xamarin_get_nsnumber_converter (managedType, method, false, exception_gchandle);
 }
 
 xamarin_id_to_managed_func
-xamarin_get_nsvalue_to_managed_func (MonoClass *managedType, MonoMethod *method, guint32 *exception_gchandle)
+xamarin_get_nsvalue_to_managed_func (MonoClass *managedType, MonoMethod *method, gpointer *exception_gchandle)
 {
 	return (xamarin_id_to_managed_func) xamarin_get_nsvalue_converter (managedType, method, true, exception_gchandle);
 }
 
 xamarin_managed_to_id_func
-xamarin_get_managed_to_nsvalue_func (MonoClass *managedType, MonoMethod *method, guint32 *exception_gchandle)
+xamarin_get_managed_to_nsvalue_func (MonoClass *managedType, MonoMethod *method, gpointer *exception_gchandle)
 {
 	return (xamarin_managed_to_id_func) xamarin_get_nsvalue_converter (managedType, method, false, exception_gchandle);
 }
 
 void *
-xamarin_smart_enum_to_nsstring (MonoObject *value, void *context /* token ref */, guint32 *exception_gchandle)
+xamarin_smart_enum_to_nsstring (MonoObject *value, void *context /* token ref */, gpointer *exception_gchandle)
 {
 	guint32 context_ref = GPOINTER_TO_INT (context);
 	if (context_ref == INVALID_TOKEN_REF) {
 		// This requires the dynamic registrar to invoke the correct conversion function
-		int handle = mono_gchandle_new (value, FALSE);
+		gpointer handle = mono_gchandle_new (value, FALSE);
 		NSString *rv = xamarin_convert_smart_enum_to_nsstring (GINT_TO_POINTER (handle), exception_gchandle);
 		mono_gchandle_free (handle);
 		return rv;
@@ -1309,18 +1309,18 @@ xamarin_smart_enum_to_nsstring (MonoObject *value, void *context /* token ref */
 }
 
 void *
-xamarin_nsstring_to_smart_enum (id value, void *ptr, MonoClass *managedType, void *context, guint32 *exception_gchandle)
+xamarin_nsstring_to_smart_enum (id value, void *ptr, MonoClass *managedType, void *context, gpointer *exception_gchandle)
 {
 	guint32 context_ref = GPOINTER_TO_INT (context);
-	int gc_handle = 0;
+	gpointer gc_handle = NULL;
 	MonoObject *obj;
 
 	if (context_ref == INVALID_TOKEN_REF) {
 		// This requires the dynamic registrar to invoke the correct conversion function
 		void *rv = xamarin_convert_nsstring_to_smart_enum (value, mono_type_get_object (mono_domain_get (), mono_class_get_type (managedType)), exception_gchandle);
-		if (*exception_gchandle != 0)
+		if (*exception_gchandle != NULL)
 			return ptr;
-		gc_handle = GPOINTER_TO_INT (rv);
+		gc_handle = rv; //GPOINTER_TO_INT (rv);
 		obj = mono_gchandle_get_target (gc_handle);
 	} else {
 		// The static registrar found the correct conversion function, and provided a token ref we can use
@@ -1330,10 +1330,10 @@ xamarin_nsstring_to_smart_enum (id value, void *ptr, MonoClass *managedType, voi
 		MonoObject *exception = NULL;
 
 		managed_method = xamarin_get_managed_method_for_token (context_ref /* token ref */, exception_gchandle);
-		if (*exception_gchandle != 0) return NULL;
+		if (*exception_gchandle != NULL) return NULL;
 
 		arg_ptrs [0] = xamarin_get_nsobject_with_type_for_ptr (value, false, xamarin_get_parameter_type (managed_method, 0), exception_gchandle);
-		if (*exception_gchandle != 0) return NULL;
+		if (*exception_gchandle != NULL) return NULL;
 
 		obj = mono_runtime_invoke (managed_method, NULL, arg_ptrs, &exception);
 
@@ -1354,19 +1354,19 @@ xamarin_nsstring_to_smart_enum (id value, void *ptr, MonoClass *managedType, voi
 }
 
 xamarin_id_to_managed_func
-xamarin_get_nsstring_to_smart_enum_func (MonoClass *managedType, MonoMethod *method, guint32 *exception_gchandle)
+xamarin_get_nsstring_to_smart_enum_func (MonoClass *managedType, MonoMethod *method, gpointer *exception_gchandle)
 {
 	return xamarin_nsstring_to_smart_enum;
 }
 
 xamarin_managed_to_id_func
-xamarin_get_smart_enum_to_nsstring_func (MonoClass *managedType, MonoMethod *method, guint32 *exception_gchandle)
+xamarin_get_smart_enum_to_nsstring_func (MonoClass *managedType, MonoMethod *method, gpointer *exception_gchandle)
 {
 	return (xamarin_managed_to_id_func) xamarin_smart_enum_to_nsstring;
 }
 
 NSArray *
-xamarin_convert_managed_to_nsarray_with_func (MonoArray *array, xamarin_managed_to_id_func convert, void *context, guint32 *exception_gchandle)
+xamarin_convert_managed_to_nsarray_with_func (MonoArray *array, xamarin_managed_to_id_func convert, void *context, gpointer *exception_gchandle)
 {
 	id *buf = NULL;
 	NSArray *rv = NULL;
@@ -1409,7 +1409,7 @@ exception_handling:
 }
 
 MonoArray *
-xamarin_convert_nsarray_to_managed_with_func (NSArray *array, MonoClass *managedElementType, xamarin_id_to_managed_func convert, void *context, guint32 *exception_gchandle)
+xamarin_convert_nsarray_to_managed_with_func (NSArray *array, MonoClass *managedElementType, xamarin_id_to_managed_func convert, void *context, gpointer *exception_gchandle)
 {
 	if (array == NULL)
 		return NULL;
@@ -1452,7 +1452,7 @@ exception_handling:
 }
 
 NSNumber *
-xamarin_convert_managed_to_nsnumber (MonoObject *value, MonoClass *managedType, MonoMethod *method, void *context, guint32 *exception_gchandle)
+xamarin_convert_managed_to_nsnumber (MonoObject *value, MonoClass *managedType, MonoMethod *method, void *context, gpointer *exception_gchandle)
 {
 	xamarin_managed_to_id_func convert = xamarin_get_managed_to_nsnumber_func (managedType, method, exception_gchandle);
 	if (*exception_gchandle != 0)
@@ -1462,7 +1462,7 @@ xamarin_convert_managed_to_nsnumber (MonoObject *value, MonoClass *managedType, 
 }
 
 NSValue *
-xamarin_convert_managed_to_nsvalue (MonoObject *value, MonoClass *managedType, MonoMethod *method, void *context, guint32 *exception_gchandle)
+xamarin_convert_managed_to_nsvalue (MonoObject *value, MonoClass *managedType, MonoMethod *method, void *context, gpointer *exception_gchandle)
 {
 	xamarin_managed_to_id_func convert = xamarin_get_managed_to_nsvalue_func (managedType, method, exception_gchandle);
 	if (*exception_gchandle != 0)
@@ -1471,10 +1471,10 @@ xamarin_convert_managed_to_nsvalue (MonoObject *value, MonoClass *managedType, M
 	return convert (value, context, exception_gchandle);
 }
 
-guint32
+gpointer
 xamarin_create_bindas_exception (MonoType *inputType, MonoType *outputType, MonoMethod *method)
 {
-	guint32 exception_gchandle;
+	gpointer exception_gchandle;
 	char *to_name = NULL;
 	char *from_name = NULL;
 	char *method_full_name = NULL;

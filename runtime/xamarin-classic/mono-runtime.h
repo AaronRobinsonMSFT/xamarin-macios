@@ -394,7 +394,7 @@ typedef enum {
 
 /* metadata/marshal.h */
 
-typedef void (*MonoFtnPtrEHCallback) (guint32 gchandle);
+typedef void (*MonoFtnPtrEHCallback) (gpointer gchandle);
 
 /* not in any header */
 
@@ -465,16 +465,16 @@ mono_method_full_name (MonoMethod * method, mono_bool signature);
 MONO_API MonoObject *
 mono_runtime_invoke (MonoMethod * method, void * obj, void ** params, MonoObject ** exc);
 
-MONO_API uint32_t
+MONO_API gpointer
 mono_gchandle_new (MonoObject * obj, mono_bool pinned);
 
 MONO_API MonoObject *
-mono_gchandle_get_target (uint32_t gchandle);
+mono_gchandle_get_target (gpointer gchandle);
 
 MONO_API void
-mono_gchandle_free (uint32_t gchandle);
+mono_gchandle_free (gpointer gchandle);
 
-MONO_API uint32_t
+MONO_API gpointer
 mono_gchandle_new_weakref (MonoObject * obj, mono_bool track_resurrection);
 
 MONO_API void
