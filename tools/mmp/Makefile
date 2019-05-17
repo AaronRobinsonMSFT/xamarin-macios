@@ -78,8 +78,10 @@ Xamarin.Mac.registrar.%.a: Xamarin.Mac.registrar.%.i386.a Xamarin.Mac.registrar.
 
 
 ifdef INCLUDE_MAC
-install-local:: $(MMP_TARGETS)
-all-local:: $(MMP_TARGETS)
+#install-local:: $(MMP_TARGETS)
+#all-local:: $(MMP_TARGETS)
+install-local:: 
+all-local:: 
 endif
 
 mmp: \

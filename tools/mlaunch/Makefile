@@ -10,8 +10,8 @@ all-local install-local clean-local::
 	$(MAKE) -C $(MACCORE_PATH)/tools/mlaunch $@
 else
 all-local install-local::
-	$(Q) $(CP) -R $(MACIOS_BINARIES_PATH)/mlaunch/bin/mlaunch $(IOS_DESTDIR)/Library/Frameworks/Xamarin.iOS.framework/Versions/Current/bin
-	$(Q) $(CP) -R $(MACIOS_BINARIES_PATH)/mlaunch/lib/mlaunch $(IOS_DESTDIR)/Library/Frameworks/Xamarin.iOS.framework/Versions/Current/lib
+#	$(Q) $(CP) -R $(MACIOS_BINARIES_PATH)/mlaunch/bin/mlaunch $(IOS_DESTDIR)/Library/Frameworks/Xamarin.iOS.framework/Versions/Current/bin
+#	$(Q) $(CP) -R $(MACIOS_BINARIES_PATH)/mlaunch/lib/mlaunch $(IOS_DESTDIR)/Library/Frameworks/Xamarin.iOS.framework/Versions/Current/lib
 endif
 
 ifdef ENABLE_XAMARIN
