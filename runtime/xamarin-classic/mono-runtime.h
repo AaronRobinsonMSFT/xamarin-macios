@@ -735,6 +735,18 @@ mono_exception_walk_trace (MonoException * exc, MonoExceptionFrameWalk func, gpo
 MONO_API void
 mono_install_unhandled_exception_hook (MonoUnhandledExceptionFunc func, gpointer user_data);
 
+MONO_API void*
+coreclr_get_nsobject_handle (MonoObject *obj);
+
+MONO_API void
+coreclr_set_nsobject_handle (MonoObject *obj, void *handle);
+
+MONO_API uint8_t
+coreclr_get_nsobject_flags (MonoObject *obj);
+
+MONO_API void
+coreclr_set_nsobject_flags (MonoObject *obj, uint8_t flags);
+
 MONO_API int
 mono_main (int argc, char ** argv);
 

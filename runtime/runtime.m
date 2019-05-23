@@ -219,8 +219,9 @@ xamarin_get_nsobject_handle (MonoObject *obj)
 	// COOP: Reading managed data, must be in UNSAFE mode
 	MONO_ASSERT_GC_UNSAFE;
 	
-	struct Managed_NSObject *mobj = (struct Managed_NSObject *) obj;
-	return mobj->handle;
+	//struct Managed_NSObject *mobj = (struct Managed_NSObject *) obj;
+	//return mobj->handle;
+	return (id) coreclr_get_nsobject_handle (obj);
 }
 
 void
@@ -229,8 +230,9 @@ xamarin_set_nsobject_handle (MonoObject *obj, id handle)
 	// COOP: Writing managed data, must be in UNSAFE mode
 	MONO_ASSERT_GC_UNSAFE;
 	
-	struct Managed_NSObject *mobj = (struct Managed_NSObject *) obj;
-	mobj->handle  = handle;
+	//struct Managed_NSObject *mobj = (struct Managed_NSObject *) obj;
+	//mobj->handle  = handle;
+	coreclr_set_nsobject_handle (obj, handle);
 }
 
 uint8_t
@@ -239,8 +241,9 @@ xamarin_get_nsobject_flags (MonoObject *obj)
 	// COOP: Reading managed data, must be in UNSAFE mode
 	MONO_ASSERT_GC_UNSAFE;
 	
-	struct Managed_NSObject *mobj = (struct Managed_NSObject *) obj;
-	return mobj->flags;
+	//struct Managed_NSObject *mobj = (struct Managed_NSObject *) obj;
+	//return mobj->flags;
+	return coreclr_get_nsobject_flags (obj);
 }
 
 void
@@ -249,8 +252,9 @@ xamarin_set_nsobject_flags (MonoObject *obj, uint8_t flags)
 	// COOP: Writing managed data, must be in UNSAFE mode
 	MONO_ASSERT_GC_UNSAFE;
 	
-	struct Managed_NSObject *mobj = (struct Managed_NSObject *) obj;
-	mobj->flags = flags;
+	//struct Managed_NSObject *mobj = (struct Managed_NSObject *) obj;
+	//mobj->flags = flags;
+	coreclr_set_nsobject_flags (obj, flags);
 }
 
 MonoType *
@@ -601,8 +605,9 @@ xamarin_get_reflection_method_method (MonoReflectionMethod *method)
 	// COOP: Reads managed memory, needs to be in UNSAFE mode
 	MONO_ASSERT_GC_UNSAFE;
 	
-	PublicMonoReflectionMethod *rm = (PublicMonoReflectionMethod *) method;
-	return rm->method;
+	//PublicMonoReflectionMethod *rm = (PublicMonoReflectionMethod *) method;
+	//return rm->method;
+	return (MonoMethod *) method;
 }
 
 id

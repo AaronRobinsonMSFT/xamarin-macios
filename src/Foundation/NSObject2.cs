@@ -83,6 +83,13 @@ namespace Foundation {
 			IsCustomType = 128,
 		}
 
+		public void SetHandleRaw (IntPtr handle) {
+			this.handle = handle;
+		}
+
+		public byte GetFlagsRaw () { return (byte)this.flags; }
+		public void SetFlagsRaw (byte flags) { this.flags = (Flags)flags; }
+
 		bool disposed { 
 			get { return ((flags & Flags.Disposed) == Flags.Disposed); } 
 			set { flags = value ? (flags | Flags.Disposed) : (flags & ~Flags.Disposed);	}
@@ -153,14 +160,17 @@ namespace Foundation {
 			return class_ptr;
 		}
 
-		[MethodImplAttribute (MethodImplOptions.InternalCall)]
-		extern static void RegisterToggleRef (NSObject obj, IntPtr handle, bool isCustomType);
+		//[MethodImplAttribute (MethodImplOptions.InternalCall)]
+		[DllImport("xmdnc", EntryPoint = "coreclr_RegisterToggleRef")]
+		extern static void RegisterToggleRef (IntPtr obj, IntPtr handle, bool isCustomType);
 
-		[MethodImplAttribute (MethodImplOptions.InternalCall)]
-		static extern void xamarin_release_managed_ref (IntPtr handle, NSObject managed_obj);
+		//[MethodImplAttribute (MethodImplOptions.InternalCall)]
+		[DllImport("xmdnc", EntryPoint = "coreclr_xamarin_release_managed_ref")]
+		static extern void xamarin_release_managed_ref (IntPtr handle, IntPtr managed_obj);
 
-		[MethodImplAttribute (MethodImplOptions.InternalCall)]
-		static extern void xamarin_create_managed_ref (IntPtr handle, NSObject obj, bool retain);
+		//[MethodImplAttribute (MethodImplOptions.InternalCall)]
+		[DllImport("xmdnc", EntryPoint = "coreclr_xamarin_create_managed_ref")]
+		static extern void xamarin_create_managed_ref (IntPtr handle, IntPtr obj, bool retain);
 
 #if !XAMCORE_3_0
 		public static bool IsNewRefcountEnabled ()
@@ -187,7 +197,15 @@ namespace Foundation {
 				return;
 			
 			IsRegisteredToggleRef = true;
-			RegisterToggleRef (this, Handle, allowCustomTypes);
+			var h = GCHandle.Alloc (this);
+			try
+			{
+				RegisterToggleRef (GCHandle.ToIntPtr (h), Handle, allowCustomTypes);	
+			}
+			finally
+			{
+				h.Free ();
+			}
 		}
 
 		private void InitializeObject (bool alloced) {
@@ -227,12 +245,28 @@ namespace Foundation {
 
 		void CreateManagedRef (bool retain)
 		{
-			xamarin_create_managed_ref (handle, this, retain);
+			var h = GCHandle.Alloc (this);
+			try
+			{
+				xamarin_create_managed_ref (handle, GCHandle.ToIntPtr (h), retain);
+			}
+			finally
+			{
+				h.Free ();
+			}
 		}
 
 		void ReleaseManagedRef ()
 		{
-			xamarin_release_managed_ref (handle, this);
+			var h = GCHandle.Alloc (this);
+			try
+			{
+				xamarin_release_managed_ref (handle, GCHandle.ToIntPtr (h));
+			}
+			finally
+			{
+				h.Free ();
+			}
 		}
 
 #if !XAMCORE_2_0
