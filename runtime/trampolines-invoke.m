@@ -495,11 +495,11 @@ xamarin_invoke_trampoline (enum TrampolineType type, id self, SEL sel, iterator_
 		 * This problem is documented in the following bug:
 		 * https://bugzilla.xamarin.com/show_bug.cgi?id=6556
 		 */
-		//retval = mono_object_new (domain, mono_method_get_class (method));
+		retval = mono_object_new (domain, mono_method_get_class (method));
 
-		//xamarin_set_nsobject_handle (retval, self);
-		//xamarin_set_nsobject_flags (retval, NSObjectFlagsNativeRef);
-		retval = mono_runtime_invoke (method, (void *)self, (void **) arg_ptrs, exception_ptr);
+		xamarin_set_nsobject_handle (retval, self);
+		xamarin_set_nsobject_flags (retval, NSObjectFlagsNativeRef);
+		retval = mono_runtime_invoke (method, retval, (void **) arg_ptrs, exception_ptr);
 		if (exception != NULL)
 			goto exception_handling;
 		xamarin_create_managed_ref (self, retval, true);
