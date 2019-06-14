@@ -38,6 +38,10 @@ namespace AppKit {
 		private static Thread mainThread;
 
 		static NSApplication () {
+			// Make a reference to NSObject so it's static constructor is run prior to
+			// the call to Class.GetHandle().
+			Console.WriteLine($"NSObject Assembly: {NSObject.PlatformAssembly}");
+
 			class_ptr = Class.GetHandle ("NSApplication");
 		}
 
