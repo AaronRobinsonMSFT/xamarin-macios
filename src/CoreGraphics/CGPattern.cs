@@ -48,18 +48,13 @@ namespace CoreGraphics {
 	[StructLayout (LayoutKind.Sequential)]
 	struct CGPatternCallbacks {
 		internal /* unsigned int */ uint version;
-		internal IntPtr draw;
-		internal IntPtr release;
+		internal DrawPatternCallback draw;
+		internal ReleaseInfoCallback release;
 	}
 
 	// CGPattern.h
 	public class CGPattern : NativeObject
 	{
-		static DrawPatternCallback DrawDelegate = new DrawPatternCallback (DrawCallback);
-		static ReleaseInfoCallback ReleaseDelegate = new ReleaseInfoCallback (ReleaseCallback);
-		static IntPtr s_draw = Marshal.GetFunctionPointerForDelegate (DrawDelegate);
-		static IntPtr s_release = Marshal.GetFunctionPointerForDelegate (ReleaseDelegate);
-
 #if !COREBUILD
 		/* invoked by marshallers */
 		public CGPattern (IntPtr handle)
@@ -92,8 +87,8 @@ namespace CoreGraphics {
 			if (drawPattern == null)
 				throw new ArgumentNullException (nameof (drawPattern));
 
-			callbacks.draw = s_draw;
-			callbacks.release = s_release;
+			callbacks.draw = DrawCallback;
+			callbacks.release = ReleaseCallback;
 			callbacks.version = 0;
 
 			gch = GCHandle.Alloc (drawPattern);
