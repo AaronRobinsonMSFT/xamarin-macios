@@ -27,7 +27,6 @@ namespace CoreFoundation {
 	// base class to be reused for other patterns that use other retain/release
 	// systems.
 	//
-	[StructLayout (LayoutKind.Sequential)]
 	public abstract class NativeObject : INativeObject, IDisposable {
 		IntPtr handle;
 		public IntPtr Handle {
