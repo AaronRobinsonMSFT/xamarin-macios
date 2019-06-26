@@ -666,6 +666,25 @@
 		),
 
 		#endregion
+
+		#region coreclr extensions
+
+		new Export ("void *", "coreclr_get_nsobject_handle",
+			"MonoObject *", "obj"
+		),
+		new Export ("void", "coreclr_set_nsobject_handle",
+			"MonoObject *", "obj",
+			"void *", "handle"
+		),
+		new Export ("uint8_t", "coreclr_get_nsobject_flags",
+			"MonoObject *", "obj"
+		),
+		new Export ("void", "coreclr_set_nsobject_flags",
+			"MonoObject *", "obj",
+			"uint8_t", "flags"
+		),
+
+		#endregion
 	};
 #><#+
 	class Arg
