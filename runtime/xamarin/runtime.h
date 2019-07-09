@@ -183,10 +183,22 @@ MonoObject *	xamarin_get_nsobject_with_type_for_ptr (id self, bool owns, MonoTyp
 MonoObject *	xamarin_get_nsobject_with_type_for_ptr_created (id self, bool owns, MonoType *type, int32_t *created, gpointer *exception_gchandle);
 int *			xamarin_get_delegate_for_block_parameter (MonoMethod *method, guint32 token_ref, int par, void *nativeBlock, gpointer *exception_gchandle);
 id              xamarin_get_block_for_delegate (MonoMethod *method, MonoObject *delegate, const char *signature /* NULL allowed, but requires the dynamic registrar at runtime to compute */, guint32 token_ref /* INVALID_TOKEN_REF allowed, but requires the dynamic registrar at runtime */, gpointer *exception_gchandle);
+
 id				xamarin_get_nsobject_handle (MonoObject *obj);
 void			xamarin_set_nsobject_handle (MonoObject *obj, id handle);
 uint8_t         xamarin_get_nsobject_flags (MonoObject *obj);
 void			xamarin_set_nsobject_flags (MonoObject *obj, uint8_t flags);
+
+#ifdef DYNAMIC_MONO_RUNTIME
+#define xamarin_get_nsobject_flags_in_callback coreclr_get_nsobject_flags_callback
+#define xamarin_set_nsobject_flags_in_callback coreclr_set_nsobject_flags_callback
+#define xamarin_get_nsobject_handle_in_callback (id)coreclr_get_nsobject_handle_callback
+#else
+#define xamarin_get_nsobject_flags_in_callback(obj) ((struct Managed_NSObject *) object)->flags
+#define xamarin_get_nsobject_handle_in_callback(obj) (id)((struct Managed_NSObject *) object)->handle
+#define xamarin_set_nsobject_flags_in_callback(obj, flagsVar) ((struct Managed_NSObject *) object)->flags = flagsVar
+#endif
+
 void			xamarin_throw_nsexception (MonoException *exc);
 void			xamarin_rethrow_managed_exception (gpointer original_gchandle, gpointer *exception_gchandle);
 MonoException *	xamarin_create_exception (const char *msg);
@@ -216,7 +228,7 @@ void			xamarin_free_gchandle (id self, gpointer gchandle);
 void			xamarin_clear_gchandle (id self);
 gpointer		xamarin_get_gchandle_with_flags (id self);
 void			xamarin_set_gchandle (id self, gpointer gchandle);
-void			xamarin_create_gchandle (id self, void *managed_object, int flags, bool force_weak);
+void			xamarin_create_gchandle (id self, void *managed_object, intptr_t flags, bool force_weak);
 void			xamarin_create_managed_ref (id self, void * managed_object, bool retain);
 void            xamarin_release_managed_ref (id self, MonoObject *managed_obj);
 void			xamarin_notify_dealloc (id self, gpointer gchandle);
@@ -353,6 +365,12 @@ public:
 // Once we have one mono clone again the TARGET_OS_WATCH
 // condition should be removed (DYNAMIC_MONO_RUNTIME should still
 // be here though).
+#define CORECLR_XAMARIN_MAC
+#ifdef CORECLR_XAMARIN_MAC
+#define MONO_THREAD_ATTACH CORECLR_HANDLE_FRAME_PUSH()
+#define MONO_THREAD_DETACH CORECLR_HANDLE_FRAME_POP()
+#else
+
 #if TARGET_OS_WATCH && !defined (DYNAMIC_MONO_RUNTIME)
 #define MONO_THREAD_ATTACH \
 	do { \
@@ -369,6 +387,7 @@ public:
 
 #define MONO_THREAD_DETACH \
 	} while (0)
+#endif
 #endif
 
 #ifdef __cplusplus

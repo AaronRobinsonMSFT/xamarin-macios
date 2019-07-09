@@ -6,6 +6,11 @@ namespace ObjCRuntime {
 	internal struct ObjectWrapper {
 		//[FieldOffset(0)] object obj;
 		//[FieldOffset(0)] IntPtr handle;
+		[DllImport("xmdnc", EntryPoint = "mono_gchandle_get_target")]
+		static extern IntPtr mono_gchandle_get_target (IntPtr gchandle);
+
+		[DllImport("xmdnc", EntryPoint = "mono_gchandle_new")]
+		static extern IntPtr mono_gchandle_new (IntPtr objHandle, int pinned);
 
 		internal static IntPtr Convert (object obj) {
 			if (obj == null)
@@ -16,7 +21,11 @@ namespace ObjCRuntime {
 			//wrapper.obj = obj;
 
 			//return wrapper.handle;
-			return GCHandle.ToIntPtr (GCHandle.Alloc (obj));
+			GCHandle gchandleTemp = GCHandle.Alloc (obj);
+			IntPtr objHandle = mono_gchandle_get_target(GCHandle.ToIntPtr(gchandleTemp));
+			gchandleTemp.Free();
+
+			return objHandle;
 		}
 		
 		internal static object Convert (IntPtr ptr) 
@@ -26,7 +35,10 @@ namespace ObjCRuntime {
 			//wrapper.handle = ptr;
 				
 			//return wrapper.obj;
-			return GCHandle.FromIntPtr (ptr).Target;
+			GCHandle gch = GCHandle.FromIntPtr(mono_gchandle_new(ptr, 0));
+			object obj = gch.Target;
+			gch.Free();
+			return obj;
 		}
 	}
 }

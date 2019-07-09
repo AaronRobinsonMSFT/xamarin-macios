@@ -1274,12 +1274,15 @@ xamarin_get_managed_to_nsvalue_func (MonoClass *managedType, MonoMethod *method,
 void *
 xamarin_smart_enum_to_nsstring (MonoObject *value, void *context /* token ref */, gpointer *exception_gchandle)
 {
+	CORECLR_HANDLE_FRAME_PUSH();
+
 	guint32 context_ref = GPOINTER_TO_INT (context);
 	if (context_ref == INVALID_TOKEN_REF) {
 		// This requires the dynamic registrar to invoke the correct conversion function
 		gpointer handle = mono_gchandle_new (value, FALSE);
 		NSString *rv = xamarin_convert_smart_enum_to_nsstring (GINT_TO_POINTER (handle), exception_gchandle);
 		mono_gchandle_free (handle);
+		CORECLR_HANDLE_FRAME_POP();
 		return rv;
 	} else {
 		// The static registrar found the correct conversion function, and provided a token ref we can use
@@ -1298,13 +1301,18 @@ xamarin_smart_enum_to_nsstring (MonoObject *value, void *context /* token ref */
 
 		if (exception) {
 			*exception_gchandle = mono_gchandle_new (exception, FALSE);
+			CORECLR_HANDLE_FRAME_POP();
 			return NULL;
 		}
 
 		if (retval == NULL)
+		{
+			CORECLR_HANDLE_FRAME_POP();
 			return NULL;
-		return xamarin_get_nsobject_handle (retval);
-
+		}
+		id retvalId = xamarin_get_nsobject_handle (retval);
+		CORECLR_HANDLE_FRAME_POP();
+		return retvalId;
 	}
 }
 
@@ -1380,6 +1388,7 @@ xamarin_convert_managed_to_nsarray_with_func (MonoArray *array, xamarin_managed_
 	if (length == 0)
 		return [NSArray array];
 
+	CORECLR_HANDLE_FRAME_PUSH();
 	buf = (id *) malloc (sizeof (id) * length);
 	MonoClass *element_class = mono_class_get_element_class (mono_object_get_class ((MonoObject *) array));
 	bool is_value_type = mono_class_is_valuetype (element_class);
@@ -1403,6 +1412,7 @@ xamarin_convert_managed_to_nsarray_with_func (MonoArray *array, xamarin_managed_
 	rv = [NSArray arrayWithObjects: buf count: length];
 
 exception_handling:
+	CORECLR_HANDLE_FRAME_POP();
 	free (buf);
 
 	return rv;
@@ -1431,6 +1441,7 @@ xamarin_convert_nsarray_to_managed_with_func (NSArray *array, MonoClass *managed
 		ptr = (char *) mono_array_addr_with_size (rv, element_size, 0);
 	}
 	for (int i = 0; i < length; i++) {
+		CORECLR_HANDLE_FRAME_PUSH();
 		if (is_value_type) {
 			valueptr = convert ([array objectAtIndex: i], valueptr, managedElementType, context, exception_gchandle);
 			memcpy (ptr, valueptr, element_size);
@@ -1439,6 +1450,7 @@ xamarin_convert_nsarray_to_managed_with_func (NSArray *array, MonoClass *managed
 			mobj = (MonoObject *) convert ([array objectAtIndex: i], NULL, managedElementType, context, exception_gchandle);
 			mono_array_setref (rv, i, mobj);
 		}
+		CORECLR_HANDLE_FRAME_POP();
 		if (*exception_gchandle != 0) {
 			*exception_gchandle = xamarin_get_exception_for_element_conversion_failure (*exception_gchandle, i);
 			goto exception_handling;

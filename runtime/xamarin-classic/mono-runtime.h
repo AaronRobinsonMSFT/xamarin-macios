@@ -219,6 +219,23 @@ typedef struct {
 typedef struct _MonoReferenceQueue MonoReferenceQueue;
 typedef void (*mono_reference_queue_callback) (void *user_data);
 
+typedef struct 
+{
+	void* unused1;
+	void* unused2;
+	void* unused3;
+} coreclr_handle_frame;
+
+#ifdef DYNAMIC_MONO_RUNTIME
+#define mono_array_get(array,type,index) mono_array_get_objectreference(array, index)
+#define mono_array_addr(array,type,index) ((type*)(void*) mono_array_addr_with_size (array, sizeof (type), index))
+#define CORECLR_HANDLE_FRAME_PUSH() coreclr_handle_frame handleFrame = coreclr_push_frame()
+#define CORECLR_HANDLE_FRAME_POP() coreclr_pop_frame(handleFrame)
+#define mono_array_setref(array, index, value) mono_array_setobjectreference(array, index, value)
+#else
+#define CORECLR_HANDLE_FRAME_PUSH() do { ; } while (false)
+#define CORECLR_HANDLE_FRAME_POP() do { ; } while (false)
+
 #define mono_array_addr(array,type,index) ((type*)(void*) mono_array_addr_with_size (array, sizeof (type), index))
 #define mono_array_get(array,type,index) ( *(type*)mono_array_addr ((array), type, (index)) )
 #define mono_array_setref(array,index,value)	\
@@ -227,6 +244,7 @@ typedef void (*mono_reference_queue_callback) (void *user_data);
 		mono_gc_wbarrier_set_arrayref ((array), __p, (MonoObject*)(value));	\
 		/* *__p = (value);*/	\
 	} while (0)
+#endif // MONO_DYNAMIC_RUNTIME
 
 /* metadata/assembly.h */
 
@@ -346,6 +364,18 @@ typedef enum {
 
 /* metadata/gc-internal.h */
 
+#ifdef DYNAMIC_MONO_RUNTIME
+typedef struct _MonoGCFinalizerCallbacks
+{
+    int version;
+    MonoClass* mono_finalization_aware_class;
+    void (*object_queued_for_finalization)(MonoObject* object);
+} MonoGCFinalizerCallbacks;
+
+enum {
+    MONO_GC_FINALIZER_EXTENSION_VERSION = 2,
+};
+#else
 enum {
    MONO_GC_FINALIZER_EXTENSION_VERSION = 1,
 };
@@ -355,6 +385,8 @@ typedef struct {
 	gboolean (*is_class_finalization_aware) (MonoClass *klass);
 	void (*object_queued_for_finalization) (MonoObject *object);
 } MonoGCFinalizerCallbacks;
+#endif
+
 
 /* metadata/sgen-toggleref.h */
 
@@ -735,6 +767,16 @@ mono_exception_walk_trace (MonoException * exc, MonoExceptionFrameWalk func, gpo
 MONO_API void
 mono_install_unhandled_exception_hook (MonoUnhandledExceptionFunc func, gpointer user_data);
 
+MONO_API MonoObject *mono_array_get_objectreference(MonoArray* array, uintptr_t idx);
+MONO_API void mono_array_setobjectreference(MonoArray* array, uintptr_t idx, MonoObject* newValue);
+
+#ifdef DYNAMIC_MONO_RUNTIME
+MONO_API coreclr_handle_frame
+coreclr_push_frame (void);
+
+MONO_API void
+coreclr_pop_frame (coreclr_handle_frame frame);
+
 MONO_API void*
 coreclr_get_nsobject_handle (MonoObject *obj);
 
@@ -746,6 +788,7 @@ coreclr_get_nsobject_flags (MonoObject *obj);
 
 MONO_API void
 coreclr_set_nsobject_flags (MonoObject *obj, uint8_t flags);
+#endif
 
 MONO_API int
 mono_main (int argc, char ** argv);

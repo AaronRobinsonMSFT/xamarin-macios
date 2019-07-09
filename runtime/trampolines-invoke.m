@@ -95,14 +95,18 @@ xamarin_invoke_trampoline (enum TrampolineType type, id self, SEL sel, iterator_
 	if (is_ctor) {
 		bool has_nsobject = xamarin_has_nsobject (self, &exception_gchandle);
 		if (exception_gchandle != NULL) {
+			CORECLR_HANDLE_FRAME_PUSH();
 			xamarin_process_managed_exception_gchandle (exception_gchandle);
+			CORECLR_HANDLE_FRAME_POP();
 			return; // we shouldn't get here.
 		}
 
 		if (has_nsobject) {
+			CORECLR_HANDLE_FRAME_PUSH();
 			self = xamarin_invoke_objc_method_implementation (self, sel, (IMP) xamarin_ctor_trampoline);
 			marshal_return_value (context, "|", sizeof (id), self, NULL, false, NULL, NULL, &exception_gchandle);
 			xamarin_process_managed_exception_gchandle (exception_gchandle);
+			CORECLR_HANDLE_FRAME_POP();
 			return;
 		}
 	}

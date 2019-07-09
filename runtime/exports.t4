@@ -668,6 +668,28 @@
 		#endregion
 
 		#region coreclr extensions
+        new Export ("MonoObject *", "mono_array_get_objectreference", 
+		    "MonoArray*", "array",
+		    "uintptr_t", "idx"
+		),
+
+		new Export ("void", "mono_array_setobjectreference",
+		    "MonoArray*", "array",
+			"uintptr_t", "idx",
+			"MonoObject*", "newValue"
+		),
+
+		new Export ("MonoMethod*", "coreclr_reflection_method_get_method",
+			"MonoObject*", "method"
+		),
+
+		new Export ("coreclr_handle_frame", "coreclr_push_frame"
+		),
+		
+		new Export ("void", "coreclr_pop_frame",
+		    "coreclr_handle_frame", "frame"
+		),
+		
 
 		new Export ("void *", "coreclr_get_nsobject_handle",
 			"MonoObject *", "obj"
@@ -680,6 +702,16 @@
 			"MonoObject *", "obj"
 		),
 		new Export ("void", "coreclr_set_nsobject_flags",
+			"MonoObject *", "obj",
+			"uint8_t", "flags"
+		),
+		new Export ("void*", "coreclr_get_nsobject_handle_callback",
+			"MonoObject*", "obj"
+		),
+		new Export ("uint8_t", "coreclr_get_nsobject_flags_callback",
+			"MonoObject*", "obj"
+		),
+		new Export ("void", "coreclr_set_nsobject_flags_callback",
 			"MonoObject *", "obj",
 			"uint8_t", "flags"
 		),
