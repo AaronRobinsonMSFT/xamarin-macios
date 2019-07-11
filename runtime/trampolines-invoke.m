@@ -514,7 +514,7 @@ xamarin_invoke_trampoline (enum TrampolineType type, id self, SEL sel, iterator_
 	} else {
 		
 #ifdef TRACE
-		fprintf (stderr, " calling managed method with %i arguments: ", num_arg);
+		fprintf (stderr, " calling managed method %p with %i arguments: ", method, num_arg);
 		for (int i = 0; i < num_arg; i++)
 			fprintf (stderr, "%p ", arg_ptrs [i]);
 		fprintf (stderr, " writeback: %i", needs_writeback);
@@ -524,7 +524,7 @@ xamarin_invoke_trampoline (enum TrampolineType type, id self, SEL sel, iterator_
 		retval = mono_runtime_invoke (method, mthis, (void **) arg_ptrs, exception_ptr);
 
 #ifdef TRACE
-		fprintf (stderr, " called managed method with %i arguments: ", num_arg);
+		fprintf (stderr, " called managed method %p with %i arguments: ", method, num_arg);
 		for (int i = 0; i < num_arg; i++)
 			fprintf (stderr, "%p ", arg_ptrs [i]);
 		fprintf (stderr, " writeback: %i", needs_writeback);

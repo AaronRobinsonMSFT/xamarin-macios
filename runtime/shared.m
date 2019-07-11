@@ -263,7 +263,9 @@ xamarin_copy_helper (void *dst, void *src)
 	struct Block_literal *target = (struct Block_literal *) dst;
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wint-to-void-pointer-cast"
+	CORECLR_HANDLE_FRAME_PUSH();
 	target->global_handle = GINT_TO_POINTER (mono_gchandle_new (mono_gchandle_get_target (source->local_handle), FALSE));
+	CORECLR_HANDLE_FRAME_POP();
 #pragma clang diagnostic pop
 
 	OSAtomicIncrement32 (&source->descriptor->ref_count);
